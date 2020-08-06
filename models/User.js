@@ -33,7 +33,7 @@ const UserSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    salt: Number,
+    salt: String,
     about: {
       type: String,
     },
@@ -82,7 +82,7 @@ UserSchema.methods = {
     }
   },
   makeSalt: function () {
-    return Math.round(new Date.valueOf() * Math.random() + "");
+    return Math.round(new Date().valueOf() * Math.random() + "");
   },
 };
 
