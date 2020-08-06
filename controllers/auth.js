@@ -63,7 +63,20 @@ exports.signin = (req, res) => {
 
     return res.json({
       token,
-      user: { _id, username, name, role },
+      user: ({ _id, username, name, role } = user),
     });
   });
 };
+
+exports.signout = (req, res) => {
+  res.clearCookie("token");
+  res.json({
+    message: "Signed out successfully.",
+  });
+};
+
+exports.requireSignin = expressJwt({
+  secret: process.env.JWT_SECRET,
+  algorithms: ["HS256"], // added later
+  userProperty: "auth",
+});
