@@ -1,4 +1,5 @@
 const Category = require("../models/Category");
+const Blog = require("../models/Blog");
 const slufiy = require("slugify");
 const { errorHandler } = require("../helpers/dbErrorHandler");
 
@@ -38,7 +39,22 @@ exports.read = (req, res) => {
         error: errorHandler(err),
       });
     }
-    res.json(category);
+    Blog.find({ categories: category })
+      .populate("categories", "_id name slug")
+      .populate("tags", "_id name slug")
+      .populate("author", "_id name")
+      .select(
+        "_id title slug excerpt categories author tags createdAt updatedAt"
+      )
+      .exec((error, data) => {
+        if (error)
+          return res.status(400).json({
+            error: errorHandler(error),
+          });
+        else {
+          return res.json({ category: category, blogs: data });
+        }
+      });
   });
 };
 

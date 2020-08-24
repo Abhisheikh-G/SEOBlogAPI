@@ -9,6 +9,7 @@ const formidable = require("formidable");
 const slugify = require("slugify");
 const stripHtml = require("string-strip-html");
 const _ = require("lodash");
+const { json } = require("body-parser");
 
 exports.create = (req, res) => {
   let form = new formidable.IncomingForm();
@@ -153,15 +154,13 @@ exports.update = (req, res) => {
 
         oldBlog.photo.data = fs.readFileSync(files.photo.path);
         oldBlog.photo.contentType = files.photo.type;
-      } else {
-        oldBlog.photo = {};
       }
-    });
 
-    oldBlog.save((err, result) => {
-      if (err) return res.status(400).json({ error: errorHandler(err) });
+      oldBlog.save((err, result) => {
+        if (err) return res.status(400).json({ error: errorHandler(err) });
 
-      return res.json(result);
+        return res.json(result);
+      });
     });
   });
 };
@@ -186,8 +185,9 @@ exports.listSingleBlog = (req, res) => {
     .populate("categories", "_id name slug")
     .populate("tags", "_id name slug")
     .populate("author", "_id name slug")
+    .populate("photo")
     .select(
-      "_id title body slug metaTitle metaDescription categories tags author createdAt updatedAt"
+      "_id title body slug metaTitle photo metaDescription categories tags author createdAt updatedAt"
     )
     .exec((error, data) => {
       if (error) return res.json({ error: errorHandler(error) });
@@ -249,4 +249,44 @@ exports.listAllBlogsInfo = (req, res) => {
         });
       });
     });
+};
+
+exports.listRelatedBlogs = (req, res) => {
+  let limit = req.body.limit ? parseInt(req.body.limit) : 3;
+  const { _id, categories } = req.body.blog;
+
+  Blog.find({ _id: { $ne: _id }, categories: { $in: categories } })
+    .limit(limit)
+    .populate("author", "_id name profile")
+    .select("title categories tags author slug excerpt createdAt updatedAt")
+    .exec((error, blogs) => {
+      console.log(error);
+      if (error) return res.status(400).json({ error: "Blogs not found" });
+      return res.json(blogs);
+    });
+};
+
+exports.searchBlogs = (req, res) => {
+  const { search } = req.query;
+  console.log(req.query);
+  if (!search)
+    return res
+      .status(400)
+      .json({ error: "There was a problem with your search" });
+  else {
+    Blog.find(
+      {
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { body: { $regex: search, $options: "i" } },
+        ],
+      },
+      (error, blogs) => {
+        if (error) return res.status(400).json({ error: errorHandler(error) });
+        else {
+          res.json(blogs);
+        }
+      }
+    ).select("-photo -body");
+  }
 };
