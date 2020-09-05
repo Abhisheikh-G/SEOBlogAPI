@@ -2,6 +2,8 @@ const User = require("../models/User");
 const shortId = require("shortid");
 const jwt = require("jsonwebtoken");
 const expressJwt = require("express-jwt");
+const Blog = require("../models/Blog");
+const { errorHandler } = require("../helpers/dbErrorHandler");
 
 exports.signup = (req, res) => {
   User.findOne({ email: req.body.email }).exec((err, user) => {
@@ -111,5 +113,24 @@ exports.adminMiddleware = (req, res, next) => {
 
     req.profile = user;
     next();
+  });
+};
+
+exports.canUpdateDeleteBlog = (req, res, next) => {
+  const slug = req.params.slug.toLowerCase();
+  Blog.findOne({ slug }).exec((error, data) => {
+    if (error) return res.status(400).json({ error: errorHandler(error) });
+    else {
+      let authorizedUser =
+        data.author._id.toString() === req.profile._id.toString();
+
+      if (!authorizedUser)
+        return res
+          .status(400)
+          .json({ error: `You can't perform that action.` });
+      else {
+        next();
+      }
+    }
   });
 };

@@ -1,6 +1,7 @@
 const Blog = require("../models/Blog");
 const Category = require("../models/Category");
 const Tag = require("../models/Tag");
+const User = require("../models/User");
 const { errorHandler } = require("../helpers/dbErrorHandler");
 const { smartTrim } = require("../helpers/blog");
 
@@ -184,7 +185,7 @@ exports.listSingleBlog = (req, res) => {
   Blog.findOne({ slug })
     .populate("categories", "_id name slug")
     .populate("tags", "_id name slug")
-    .populate("author", "_id name slug")
+    .populate("author", "_id name username slug")
     .populate("photo")
     .select(
       "_id title body slug metaTitle photo metaDescription categories tags author createdAt updatedAt"
@@ -208,6 +209,27 @@ exports.listAllBlogs = (req, res) => {
         });
       res.json(data);
     });
+};
+
+exports.listAllBlogsByUser = (req, res) => {
+  const username = req.params.username.toString();
+
+  User.findOne({ username: username }).exec((error, user) => {
+    if (error) {
+      return res.status(400).json({ error: errorHandler(error) });
+    }
+    Blog.find({ author: user._id })
+      .populate("categories", "_id name slug")
+      .populate("tags", "_id name slug")
+      .populate("author", "_id name username")
+      .select("_id title slug author createdAt updatedAt")
+      .exec((error, data) => {
+        if (error) return res.status(400).json({ error: errorHandler(error) });
+        else {
+          return res.json(data);
+        }
+      });
+  });
 };
 
 exports.listAllBlogsInfo = (req, res) => {
@@ -257,7 +279,7 @@ exports.listRelatedBlogs = (req, res) => {
 
   Blog.find({ _id: { $ne: _id }, categories: { $in: categories } })
     .limit(limit)
-    .populate("author", "_id name profile")
+    .populate("author", "_id name username profile")
     .select("title categories tags author slug excerpt createdAt updatedAt")
     .exec((error, blogs) => {
       console.log(error);
